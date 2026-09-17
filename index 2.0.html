@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Бюджет</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --paper:#FFFFFF;
+    --line:#EAE9F2;
+    --ink:#15121F;
+    --ink-soft:#716D89;
+    --accent:#5B4FE0;
+    --accent-soft:#EFEDFC;
+    --danger:#E0554B;
+    --grad1:#6C5CE7;
+    --grad2:#4F8CFF;
+    --shadow:0 2px 14px rgba(90,79,224,0.08);
+    --r-lg:22px;
+    --r-md:16px;
+    --r-sm:10px;
+  }
+  *{box-sizing:border-box;}
+  html{color-scheme:light !important; background:#FFF !important;}
+  body{
+    margin:0;
+    background:#FFF !important;
+    color:#15121F !important;
+    font-family:-apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-color-scheme: dark){
+    html, body{ background:#FFF !important; color:#15121F !important; }
+  }
+  .wrap{ max-width:640px; margin:0 auto; padding:18px 16px 110px; }
+
+  .masthead{
+    display:flex; justify-content:space-between; align-items:baseline;
+    margin-bottom:16px;
+  }
+  .masthead h1{
+    font-size:22px; font-weight:600; margin:0;
+    color:#15121F !important; letter-spacing:-0.01em;
+  }
+  .masthead .sub{ font-size:13px; color:var(--ink-soft); }
+
+  .section-title{
+    display:inline-block;
+    font-size:13.5px; font-weight:600;
+    color:#3B2FAF !important;
+    background:var(--accent-soft);
+    border-radius:999px;
+    padding:6px 14px;
+    margin:0 0 12px;
+  }
+
+  .settings{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+  .settings label{
+    display:flex; flex-direction:column; gap:4px; flex:1; min-width:130px;
+    font-size:12.5px; color:var(--ink-soft);
+  }
+  .settings input{
+    font-size:15px; padding:9px 11px;
+    border:1px solid var(--line); border-radius:var(--r-sm);
+    background:#fff; color:var(--ink); color-scheme:light;
+  }
+  .settings input:focus{ outline:none; border-color:var(--accent); }
+
+  .balance-block{
+    background:#fff; border:1px solid var(--line);
+    border-radius:var(--r-lg); box-shadow:var(--shadow);
+    padding:20px; margin-bottom:24px;
+  }
+  .balance-label{ font-size:12.5px; color:var(--ink-soft); margin-bottom:5px; }
+  .balance-figure{
+    font-size:38px; font-weight:600; line-height:1;
+    letter-spacing:-0.02em; color:#15121F !important;
+  }
+  .balance-figure.over{ color:var(--danger) !important; }
+  .balance-row{
+    display:flex; gap:20px; flex-wrap:wrap;
+    margin-top:16px; padding-top:14px; border-top:1px solid var(--line);
+  }
+  .balance-stat .n{ font-size:17px; font-weight:600; color:#15121F !important; }
+  .balance-stat .l{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+
+  .row{
+    display:grid; grid-template-columns:1fr auto; gap:7px 12px;
+    padding:15px; margin-bottom:10px;
+    background:#fff; border:1px solid var(--line); border-radius:var(--r-md);
+  }
+  .row-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .cat-name{ font-size:15px; font-weight:500; color:#15121F !important; }
+  .cat-nums{ font-size:12.5px; text-align:right; white-space:nowrap; color:var(--ink-soft); }
+  .cat-nums .remaining{ font-size:14px; font-weight:600; }
+  .cat-nums .remaining.ok{ color:var(--accent); }
+  .cat-nums .remaining.over{ color:var(--danger); }
+  .track{
+    grid-column:1/-1; height:7px; border-radius:999px;
+    background:var(--line); position:relative; overflow:hidden;
+  }
+  .track .fill{
+    position:absolute; left:0; top:0; bottom:0; border-radius:999px;
+    background:linear-gradient(90deg, var(--grad1), var(--grad2));
+    transition:width .3s ease;
+  }
+  .track .fill.over{ background:linear-gradient(90deg,#FF7A7A,var(--danger)); }
+  .planned-edit{
+    grid-column:1/-1; display:flex; align-items:center; gap:6px;
+    font-size:12px; color:var(--ink-soft);
+  }
+  .planned-edit input{
+    width:78px; border:none; border-bottom:1px solid var(--line);
+    background:transparent; padding:2px; font-size:13px;
+    color:var(--ink); color-scheme:light;
+  }
+  .planned-edit input:focus{ outline:none; border-bottom-color:var(--accent); }
+  .del-cat{
+    background:none; border:none; color:var(--ink-soft);
+    font-size:17px; cursor:pointer; padding:0 0 0 8px; line-height:1;
+  }
+
+  .add-cat{ display:grid; grid-template-columns:1fr 92px auto; gap:8px; margin:12px 0 24px; }
+  .add-cat input{
+    font-size:13.5px; padding:10px;
+    border:1px dashed var(--line); border-radius:var(--r-sm);
+    background:#fff; color:var(--ink); color-scheme:light;
+  }
+  .add-cat input[type=number]{ text-align:right; }
+  .add-cat button{
+    border:none; border-radius:var(--r-sm);
+    background:var(--accent-soft); color:var(--accent);
+    font-size:13.5px; font-weight:600; padding:10px 14px; cursor:pointer;
+  }
+
+  .entry-form{
+    background:#fff; border:1px solid var(--line);
+    border-radius:var(--r-lg); box-shadow:var(--shadow);
+    padding:18px; margin-top:22px;
+  }
+  .entry-form .fields{ display:grid; grid-template-columns:1fr 100px; gap:10px; }
+  .entry-form select, .entry-form input{
+    font-size:15px; padding:11px 12px;
+    border:1px solid var(--line); border-radius:var(--r-sm);
+    background:#fff; color:var(--ink); color-scheme:light;
+    font-family:inherit;
+  }
+  .entry-form select:focus, .entry-form input:focus{ outline:none; border-color:var(--accent); }
+  .entry-form input[type=number]{ text-align:right; }
+  .entry-form input[type=text]{ grid-column:1/-1; }
+  .entry-form button{
+    grid-column:1/-1; margin-top:2px;
+    background:linear-gradient(90deg,var(--grad1),var(--grad2));
+    color:#fff; border:none; border-radius:var(--r-sm);
+    padding:13px; font-size:15px; font-weight:600; cursor:pointer;
+    font-family:inherit;
+  }
+  .entry-form button:active{ opacity:.85; }
+
+  .log{ margin-top:24px; }
+  .log-row{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:12px 14px; margin-bottom:8px;
+    background:#fff; border:1px solid var(--line); border-radius:var(--r-sm);
+    font-size:13.5px; color:#15121F !important;
+  }
+  .log-row .meta{ color:var(--ink-soft); font-size:11.5px; margin-top:2px; }
+  .log-row .amt{ font-weight:600; white-space:nowrap; }
+  .log-row .del{
+    background:none; border:none; color:var(--ink-soft);
+    font-size:17px; cursor:pointer; padding:0 0 0 12px; line-height:1;
+  }
+  .empty{ color:var(--ink-soft); font-size:13.5px; padding:12px 0; }
+
+  #btnReset{
+    display:block; width:100%; margin-top:14px;
+    background:#fff; color:var(--ink-soft);
+    border:1px solid var(--line); border-radius:var(--r-sm);
+    padding:12px; font-size:13.5px; font-family:inherit; cursor:pointer;
+  }
+  #btnReset:active{ background:var(--accent-soft); }
+
+  .status{
+    position:fixed; left:0; right:0; bottom:0;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.94);
+    backdrop-filter:blur(8px);
+    border-top:1px solid var(--line);
+    font-size:12px; color:var(--ink-soft); text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <h1>Бюджет</h1>
+    <div class="sub" id="dateRange">—</div>
+  </div>
+
+  <div class="settings">
+    <label>Остаток сейчас, ₽
+      <input type="number" id="setBalance" inputmode="decimal">
+    </label>
+    <label>Дотянуть до
+      <input type="date" id="setTarget">
+    </label>
+  </div>
+
+  <div class="balance-block">
+    <div class="balance-label">Свободно на сегодня</div>
+    <div class="balance-figure" id="figFree">0 ₽</div>
+    <div class="balance-row">
+      <div class="balance-stat"><div class="n" id="statDays">0</div><div class="l">дней осталось</div></div>
+      <div class="balance-stat"><div class="n" id="statPerDay">0 ₽</div><div class="l">в день, если ровно</div></div>
+      <div class="balance-stat"><div class="n" id="statSpent">0 ₽</div><div class="l">потрачено всего</div></div>
+    </div>
+  </div>
+
+  <div class="section-title">Статьи</div>
+  <div class="ledger" id="ledger"></div>
+
+  <div class="add-cat">
+    <input type="text" id="newCatName" placeholder="Новая категория">
+    <input type="number" id="newCatAmt" placeholder="Лимит" inputmode="decimal">
+    <button id="newCatAdd">Добавить</button>
+  </div>
+
+  <div class="entry-form">
+    <div class="section-title" style="margin-bottom:12px;">Записать трату</div>
+    <div class="fields">
+      <select id="entryCat"></select>
+      <input type="number" id="entryAmt" placeholder="₽" inputmode="decimal">
+      <input type="text" id="entryNote" placeholder="Заметка — например «цветы»">
+      <button id="entryAdd">Записать</button>
+    </div>
+  </div>
+
+  <div class="log">
+    <div class="section-title">Последние записи</div>
+    <div id="logList"><div class="empty">Пока ничего не записано.</div></div>
+    <button id="btnReset" type="button">Начать новый период</button>
+  </div>
+
+</div>
+
+<div class="status" id="status">Загружаю…</div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+const IN_TELEGRAM = !!(tg && tg.initData !== undefined && tg.platform !== 'unknown');
+const KEY_PREFIX = 'budget';
+const CHUNK = 3800; // запас под лимит Telegram в 4096 символов на значение
+
+const DEFAULT_STATE = {
+  balance: 0,
+  target: '',
+  categories: [],
+  expenses: []
+};
+
+let state = null;
+
+function fmt(n){ return Math.round(n).toLocaleString('ru-RU') + ' ₽'; }
+function setStatus(t){ document.getElementById('status').textContent = t; }
+
+/* ── Хранилище ───────────────────────────────────────────────
+   В Telegram — облако бота (данные привязаны к аккаунту и видны
+   с любого устройства). Вне Telegram — localStorage браузера.  */
+
+function cs(){ return tg?.CloudStorage; }
+
+function csGet(keys){
+  return new Promise((resolve, reject) => {
+    cs().getItems(keys, (err, res) => err ? reject(new Error(err)) : resolve(res));
+  });
+}
+function csSet(key, value){
+  return new Promise((resolve, reject) => {
+    cs().setItem(key, value, (err) => err ? reject(new Error(err)) : resolve());
+  });
+}
+function csRemove(keys){
+  return new Promise((resolve) => {
+    cs().removeItems(keys, () => resolve());
+  });
+}
+
+async function loadState(){
+  if (IN_TELEGRAM && cs()){
+    try{
+      const meta = await csGet([KEY_PREFIX + '_meta']);
+      const count = parseInt(meta[KEY_PREFIX + '_meta'], 10);
+      if (!count) return structuredClone(DEFAULT_STATE);
+      const keys = Array.from({length: count}, (_, i) => `${KEY_PREFIX}_${i}`);
+      const parts = await csGet(keys);
+      const raw = keys.map(k => parts[k] || '').join('');
+      return JSON.parse(raw);
+    }catch(e){
+      setStatus('Не удалось прочитать облако Telegram');
+      return structuredClone(DEFAULT_STATE);
+    }
+  }
+  try{
+    const raw = localStorage.getItem(KEY_PREFIX);
+    return raw ? JSON.parse(raw) : structuredClone(DEFAULT_STATE);
+  }catch(e){ return structuredClone(DEFAULT_STATE); }
+}
+
+let saveTimer = null, lastCount = 0;
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  setStatus('Сохраняю…');
+  saveTimer = setTimeout(persist, 400);
+}
+
+async function persist(){
+  const raw = JSON.stringify(state);
+  if (IN_TELEGRAM && cs()){
+    try{
+      const parts = [];
+      for (let i = 0; i < raw.length; i += CHUNK) parts.push(raw.slice(i, i + CHUNK));
+      for (let i = 0; i < parts.length; i++) await csSet(`${KEY_PREFIX}_${i}`, parts[i]);
+      await csSet(KEY_PREFIX + '_meta', String(parts.length));
+      if (lastCount > parts.length){
+        const stale = [];
+        for (let i = parts.length; i < lastCount; i++) stale.push(`${KEY_PREFIX}_${i}`);
+        await csRemove(stale);
+      }
+      lastCount = parts.length;
+      setStatus('Сохранено в Telegram · ' + new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}));
+    }catch(e){
+      setStatus('Ошибка сохранения в облако');
+    }
+    return;
+  }
+  try{
+    localStorage.setItem(KEY_PREFIX, raw);
+    setStatus('Сохранено на этом устройстве');
+  }catch(e){ setStatus('Не удалось сохранить'); }
+}
+
+/* ── Расчёты ──────────────────────────────────────────────── */
+
+function daysLeft(){
+  if (!state.target) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diff = Math.ceil((new Date(state.target + 'T00:00:00') - today) / 86400000);
+  return Math.max(diff, 1);
+}
+const spentBy = id => state.expenses.filter(e => e.cat === id).reduce((s,e) => s + e.amount, 0);
+const totalSpent = () => state.expenses.reduce((s,e) => s + e.amount, 0);
+
+/* ── Отрисовка ────────────────────────────────────────────── */
+
+function render(){
+  document.getElementById('setBalance').value = state.balance;
+  document.getElementById('setTarget').value = state.target;
+  document.getElementById('dateRange').textContent = state.target
+    ? 'до ' + new Date(state.target + 'T00:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'})
+    : 'укажи дату';
+
+  const dl = daysLeft(), spent = totalSpent(), free = state.balance - spent;
+  const fig = document.getElementById('figFree');
+  fig.textContent = fmt(free);
+  fig.classList.toggle('over', free < 0);
+  document.getElementById('statDays').textContent = dl ?? '—';
+  document.getElementById('statPerDay').textContent = dl ? fmt(free / dl) : '—';
+  document.getElementById('statSpent').textContent = fmt(spent);
+
+  const ledger = document.getElementById('ledger');
+  ledger.innerHTML = '';
+  if (!state.categories.length){
+    const hint = document.createElement('div');
+    hint.className = 'empty';
+    hint.textContent = 'Категорий пока нет. Добавь первую ниже — например «Продукты» с лимитом.';
+    ledger.appendChild(hint);
+  }
+  state.categories.forEach(cat => {
+    const sp = spentBy(cat.id), rem = cat.planned - sp, over = rem < 0;
+    const pct = cat.planned > 0 ? Math.min(100, sp / cat.planned * 100) : 0;
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.innerHTML = `
+      <div class="row-top">
+        <div class="cat-name"></div>
+        <div style="display:flex; align-items:flex-start;">
+          <div class="cat-nums">
+            <div class="remaining ${over?'over':'ok'}">${over?'−':''}${fmt(Math.abs(rem))}</div>
+            <div>из ${fmt(cat.planned)} · потрачено ${fmt(sp)}</div>
+          </div>
+          <button class="del-cat" data-catdel="${cat.id}">×</button>
+        </div>
+      </div>
+      <div class="track"><div class="fill ${over?'over':''}" style="width:${pct}%"></div></div>
+      <div class="planned-edit">лимит:
+        <input type="number" inputmode="decimal" class="plannedInput" data-cat="${cat.id}" value="${cat.planned}"> ₽
+      </div>`;
+    row.querySelector('.cat-name').textContent = cat.name;
+    ledger.appendChild(row);
+  });
+
+  ledger.querySelectorAll('.del-cat').forEach(b => b.addEventListener('click', e => {
+    const id = e.target.dataset.catdel;
+    if (state.expenses.some(x => x.cat === id) &&
+        !confirm('По этой категории есть записи. Удалить вместе с ними?')) return;
+    state.categories = state.categories.filter(c => c.id !== id);
+    state.expenses = state.expenses.filter(x => x.cat !== id);
+    scheduleSave(); render();
+  }));
+
+  ledger.querySelectorAll('.plannedInput').forEach(inp => inp.addEventListener('change', e => {
+    const cat = state.categories.find(c => c.id === e.target.dataset.cat);
+    cat.planned = parseFloat(e.target.value) || 0;
+    scheduleSave(); render();
+  }));
+
+  const sel = document.getElementById('entryCat');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  state.categories.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.id; o.textContent = c.name;
+    sel.appendChild(o);
+  });
+  if (prev) sel.value = prev;
+
+  const noCats = !state.categories.length;
+  sel.disabled = noCats;
+  document.getElementById('entryAmt').disabled = noCats;
+  document.getElementById('entryNote').disabled = noCats;
+  const addBtn = document.getElementById('entryAdd');
+  addBtn.disabled = noCats;
+  addBtn.textContent = noCats ? 'Сначала добавь категорию' : 'Записать';
+  addBtn.style.opacity = noCats ? '0.45' : '1';
+
+  const logList = document.getElementById('logList');
+  if (!state.expenses.length){
+    logList.innerHTML = '<div class="empty">Пока ничего не записано.</div>';
+  } else {
+    logList.innerHTML = '';
+    [...state.expenses].sort((a,b) => b.ts - a.ts).slice(0,25).forEach(e => {
+      const cat = state.categories.find(c => c.id === e.cat);
+      const div = document.createElement('div');
+      div.className = 'log-row';
+      const left = document.createElement('div');
+      left.textContent = (cat ? cat.name : '—') + (e.note ? ' · ' + e.note : '');
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = new Date(e.ts).toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
+      left.appendChild(meta);
+      const right = document.createElement('div');
+      right.style.cssText = 'display:flex; align-items:center;';
+      right.innerHTML = `<div class="amt">−${fmt(e.amount)}</div><button class="del" data-id="${e.id}">×</button>`;
+      div.append(left, right);
+      logList.appendChild(div);
+    });
+    logList.querySelectorAll('.del').forEach(b => b.addEventListener('click', ev => {
+      state.expenses = state.expenses.filter(x => x.id !== ev.target.dataset.id);
+      scheduleSave(); render();
+    }));
+  }
+}
+
+/* ── События ──────────────────────────────────────────────── */
+
+document.getElementById('setBalance').addEventListener('change', e => {
+  state.balance = parseFloat(e.target.value) || 0; scheduleSave(); render();
+});
+document.getElementById('setTarget').addEventListener('change', e => {
+  state.target = e.target.value; scheduleSave(); render();
+});
+
+document.getElementById('entryAdd').addEventListener('click', () => {
+  const amtEl = document.getElementById('entryAmt');
+  const noteEl = document.getElementById('entryNote');
+  const amount = parseFloat(amtEl.value);
+  if (!amount || amount <= 0){ amtEl.focus(); return; }
+  state.expenses.push({
+    id: 'e' + Date.now() + Math.random().toString(36).slice(2,6),
+    cat: document.getElementById('entryCat').value,
+    amount, note: noteEl.value.trim(), ts: Date.now()
+  });
+  amtEl.value = ''; noteEl.value = '';
+  tg?.HapticFeedback?.notificationOccurred('success');
+  scheduleSave(); render();
+});
+
+document.getElementById('newCatAdd').addEventListener('click', () => {
+  const nameEl = document.getElementById('newCatName');
+  const amtEl = document.getElementById('newCatAmt');
+  const name = nameEl.value.trim();
+  if (!name){ nameEl.focus(); return; }
+  state.categories.push({
+    id: 'c' + Date.now() + Math.random().toString(36).slice(2,5),
+    name, planned: parseFloat(amtEl.value) || 0
+  });
+  nameEl.value = ''; amtEl.value = '';
+  scheduleSave(); render();
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  if (!confirm('Начать новый период?\n\nОстаток, дата и все траты обнулятся. Категории с лимитами останутся на месте.')) return;
+  state.expenses = [];
+  state.balance = 0;
+  state.target = '';
+  scheduleSave(); render();
+});
+
+/* ── Старт ────────────────────────────────────────────────── */
+
+(async function init(){
+  if (IN_TELEGRAM){
+    tg.ready();
+    tg.expand();
+    try{ tg.setHeaderColor('#ffffff'); tg.setBackgroundColor('#ffffff'); }catch(e){}
+  }
+  state = await loadState();
+  if (IN_TELEGRAM && cs()){
+    try{
+      const meta = await csGet([KEY_PREFIX + '_meta']);
+      lastCount = parseInt(meta[KEY_PREFIX + '_meta'], 10) || 0;
+    }catch(e){}
+  }
+  render();
+  setStatus(IN_TELEGRAM ? 'Данные хранятся в облаке Telegram' : 'Открыто вне Telegram — данные только в этом браузере');
+})();
+</script>
+</body>
+</html>
